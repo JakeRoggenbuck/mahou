@@ -1,3 +1,4 @@
+use std::fs;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -7,7 +8,7 @@ struct Opt {
     verbose: bool,
 
     /// The input file to be interpreted
-    file: String,
+    filename: String,
 }
 
 #[doc = "Syntax"]
@@ -34,11 +35,53 @@ struct Opt {
     - $E
 */
 
+fn is_char_whitespace(ch: char) -> bool {
+    match ch {
+        '\t' | ' ' | '\n' => true,
+        _ => false,
+    }
+}
+
+fn is_char_operator(ch: char) -> bool {
+    match ch {
+        '+' | '-' | '*' | '/' | '>' | '<' | '=' | ';' | '$' => true,
+        _ => false,
+    }
+}
+
+fn is_char_numeric(ch: char) -> bool {
+    return ch.is_digit(10);
+}
+
+fn ends_token(cur: char, next: char) -> bool {
+    if is_char_whitespace(next) {
+        return true;
+    }
+    if is_char_operator(cur) {
+        return true;
+    }
+    if is_char_operator(next) {
+        return true;
+    }
+    if is_char_whitespace(cur) {
+        return false;
+    }
+    return false;
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 enum Tokens {
-    Assignment,
+    Assign,
     Var,
     None,
+    Set,
+    Jump,
+    Print,
+    Minus,
+    Plus,
+    Divide,
+    Multiply,
+    Semi,
 }
 
 #[derive(PartialEq, Debug)]
@@ -55,8 +98,16 @@ struct Token {
 
 fn tokenize(part: &str) -> Token {
     let token: Tokens = match part {
-        "=" => Tokens::Assignment,
+        "-" => Tokens::Minus,
+        "+" => Tokens::Plus,
+        "/" => Tokens::Divide,
+        "*" => Tokens::Multiply,
+        "=" => Tokens::Assign,
         "$" => Tokens::Var,
+        ";" => Tokens::Semi,
+        "set" => Tokens::Set,
+        "jump" => Tokens::Jump,
+        "print" => Tokens::Print,
         _ => Tokens::None,
     };
 
@@ -104,10 +155,37 @@ impl Lex for Lexer {
         self.index = 0;
         let chars_len: usize = self.contents.len();
 
-        while self.index + 1 <= chars_len {}
+        while self.index + 1 <= chars_len {
+            if !is_char_whitespace(self.current_char) {
+                current_part.push(self.current_char);
+                if ends_token(self.current_char, self.next_char) {
+                    self.tokens.push(tokenize(&current_part));
+                    current_part = String::new();
+                }
+            }
+            self.next(Increment::After);
+        }
     }
 }
 
 fn main() {
-    println!("Hello, world!");
+    let args: Opt = Opt::from_args();
+
+    let contents: String = fs::read_to_string(args.filename).expect("Error reading file");
+
+    let mut lexer = Lexer {
+        contents,
+        chars: Vec::new(),
+        index: 0,
+        previous_char: ' ',
+        current_char: ' ',
+        next_char: ' ',
+        tokens: Vec::new(),
+    };
+
+    lexer.lexer();
+
+    for tok in lexer.tokens.iter() {
+        println!("{:?}:\t\t{}", tok.token, tok.part);
+    }
 }
