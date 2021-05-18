@@ -89,6 +89,7 @@ enum Tokens {
     Numeric,
 }
 
+/// Representative of the order the index needs to be incremented in
 #[derive(PartialEq, Debug)]
 enum Increment {
     Before,
@@ -134,12 +135,14 @@ fn tokenize(part: &str) -> Token {
     };
 }
 
+/// Given a string, find what tokens it's made up of
 trait Lex {
     fn move_pointer(&mut self);
     fn next(&mut self, increment: Increment);
     fn lexer(&mut self);
 }
 
+/// The parts of data needed to make tokens
 struct Lexer {
     contents: String,
     chars: Vec<char>,
@@ -167,6 +170,7 @@ impl Lex for Lexer {
             self.index += 1;
         }
     }
+    /// Takes the contents and pushes what the tokenizer returns for each part
     fn lexer(&mut self) {
         // Get all the chars from the contents of the file
         self.chars = self.contents.chars().collect();
@@ -191,6 +195,7 @@ impl Lex for Lexer {
     }
 }
 
+/// Remove the boiler plate of making a lexer object
 fn new_lexer(contents: &str) -> Lexer {
     let contents: String = contents.to_string() + "    ";
     let lexer: Lexer = Lexer {
@@ -249,6 +254,30 @@ mod tests {
                     part: ";".to_string(),
                     token: Tokens::Semi
                 }
+            ]
+        );
+
+        let mut lexer: Lexer = new_lexer("jump -2;");
+        lexer.lexer();
+        assert_eq!(
+            lexer.tokens,
+            vec![
+                Token {
+                    part: "jump".to_string(),
+                    token: Tokens::Jump
+                },
+                Token {
+                    part: "-".to_string(),
+                    token: Tokens::Minus
+                },
+                Token {
+                    part: "2".to_string(),
+                    token: Tokens::Numeric
+                },
+                Token {
+                    part: ";".to_string(),
+                    token: Tokens::Semi
+                },
             ]
         );
     }
