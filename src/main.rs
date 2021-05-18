@@ -192,6 +192,7 @@ impl Lex for Lexer {
 }
 
 fn new_lexer(contents: &str) -> Lexer {
+    let contents: String = contents.to_string() + "    ";
     let lexer: Lexer = Lexer {
         contents: contents.to_string(),
         chars: Vec::new(),
@@ -225,6 +226,31 @@ mod tests {
     fn lexer_test() {
         let mut lexer: Lexer = new_lexer("set a = 0;");
         lexer.lexer();
+        assert_eq!(
+            lexer.tokens,
+            vec![
+                Token {
+                    part: "set".to_string(),
+                    token: Tokens::Set
+                },
+                Token {
+                    part: "a".to_string(),
+                    token: Tokens::Identifier
+                },
+                Token {
+                    part: "=".to_string(),
+                    token: Tokens::Assign
+                },
+                Token {
+                    part: "0".to_string(),
+                    token: Tokens::Numeric
+                },
+                Token {
+                    part: ";".to_string(),
+                    token: Tokens::Semi
+                }
+            ]
+        );
     }
 
     #[test]
