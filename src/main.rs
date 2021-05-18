@@ -73,7 +73,6 @@ fn ends_token(cur: char, next: char) -> bool {
 enum Tokens {
     Assign,
     Var,
-    None,
     Set,
     Jump,
     Print,
@@ -82,6 +81,8 @@ enum Tokens {
     Divide,
     Multiply,
     Semi,
+    Identifier,
+    Numeric,
 }
 
 #[derive(PartialEq, Debug)]
@@ -97,7 +98,7 @@ struct Token {
 }
 
 fn tokenize(part: &str) -> Token {
-    let token: Tokens = match part {
+    let mut token: Tokens = match part {
         "-" => Tokens::Minus,
         "+" => Tokens::Plus,
         "/" => Tokens::Divide,
@@ -108,8 +109,17 @@ fn tokenize(part: &str) -> Token {
         "set" => Tokens::Set,
         "jump" => Tokens::Jump,
         "print" => Tokens::Print,
-        _ => Tokens::None,
+        _ => Tokens::Identifier,
     };
+
+    if token == Tokens::Identifier {
+        for c in part.chars() {
+            if is_char_numeric(c) {
+                token = Tokens::Numeric;
+                break;
+            }
+        }
+    }
 
     return Token {
         part: part.to_owned(),
@@ -168,13 +178,9 @@ impl Lex for Lexer {
     }
 }
 
-fn main() {
-    let args: Opt = Opt::from_args();
-
-    let contents: String = fs::read_to_string(args.filename).expect("Error reading file");
-
-    let mut lexer = Lexer {
-        contents,
+fn new_lexer(contents: &str) -> Lexer {
+    let lexer = Lexer {
+        contents: contents.to_string(),
         chars: Vec::new(),
         index: 0,
         previous_char: ' ',
@@ -183,9 +189,63 @@ fn main() {
         tokens: Vec::new(),
     };
 
+    return lexer;
+}
+
+fn main() {
+    let args: Opt = Opt::from_args();
+
+    let contents: String = fs::read_to_string(args.filename).expect("Error reading file");
+    let mut lexer: Lexer = new_lexer(&contents);
     lexer.lexer();
 
     for tok in lexer.tokens.iter() {
         println!("{:?}:\t\t{}", tok.token, tok.part);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lexer_test() {
+        let mut lexer: Lexer = new_lexer("set a = 0;");
+        lexer.lexer();
+    }
+
+    #[test]
+    fn tokenize_test() {
+        assert_eq!(
+            tokenize("set"),
+            Token {
+                token: Tokens::Set,
+                part: "set".to_string()
+            }
+        );
+
+        assert_eq!(
+            tokenize("+"),
+            Token {
+                token: Tokens::Plus,
+                part: "+".to_string()
+            }
+        );
+
+        assert_eq!(
+            tokenize("1"),
+            Token {
+                token: Tokens::Numeric,
+                part: "1".to_string()
+            }
+        );
+
+        assert_eq!(
+            tokenize("a"),
+            Token {
+                token: Tokens::Identifier,
+                part: "a".to_string()
+            }
+        );
     }
 }
