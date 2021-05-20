@@ -89,21 +89,16 @@ enum Tokens {
     Numeric,
 }
 
-/// Representative of the order the index needs to be incremented in
-#[derive(PartialEq, Debug)]
-enum Increment {
-    Before,
-    After,
-}
-
+/// This is the structure that represents a single token
 #[derive(PartialEq, Debug)]
 struct Token {
     part: String,
     token: Tokens,
+    line_num: i64,
 }
 
 /// Given a string reference that has been identified as a single token, find what token it is
-fn tokenize(part: &str) -> Token {
+fn tokenize(part: &str) -> Tokens {
     let mut token: Tokens = match part {
         "-" => Tokens::Minus,
         "+" => Tokens::Plus,
@@ -128,17 +123,13 @@ fn tokenize(part: &str) -> Token {
             }
         }
     }
-
-    return Token {
-        part: part.to_owned(),
-        token,
-    };
+    return token;
 }
 
 /// Given a string, find what tokens it's made up of
 trait Lex {
     fn move_pointer(&mut self);
-    fn next(&mut self, increment: Increment);
+    fn next(&mut self);
     fn lexer(&mut self);
 }
 
@@ -160,15 +151,9 @@ impl Lex for Lexer {
         self.current_char = self.next_char;
         self.next_char = self.chars[self.index];
     }
-    /// Increment the index before or after the point moves depending on if increment is Before or After
-    fn next(&mut self, increment: Increment) {
-        if increment == Increment::Before {
-            self.index += 1;
-        }
+    fn next(&mut self) {
         self.move_pointer();
-        if increment == Increment::After {
-            self.index += 1;
-        }
+        self.index += 1;
     }
     /// Takes the contents and pushes what the tokenizer returns for each part
     fn lexer(&mut self) {
@@ -177,20 +162,33 @@ impl Lex for Lexer {
         let mut current_part: String = String::new();
 
         self.index = 0;
+        let mut line_num: i64 = 1;
         let chars_len: usize = self.contents.len();
 
         while self.index + 1 <= chars_len {
+            // Check for newlines
+            if self.current_char == '\n' {
+                line_num += 1;
+                self.next();
+                continue;
+            }
             // If the character is not whitespace, push it to the current part
             if !is_char_whitespace(self.current_char) {
                 current_part.push(self.current_char);
                 // If the current character or the next ends the token
                 // push the current part as a token, then reset the part
                 if ends_token(self.current_char, self.next_char) {
-                    self.tokens.push(tokenize(&current_part));
+                    let token_type: Tokens = tokenize(&current_part);
+                    let token: Token = Token {
+                        token: token_type,
+                        part: current_part,
+                        line_num,
+                    };
+                    self.tokens.push(token);
                     current_part = String::new();
                 }
             }
-            self.next(Increment::After);
+            self.next();
         }
     }
 }
@@ -229,54 +227,43 @@ mod tests {
 
     #[test]
     fn lexer_test() {
-        let mut lexer: Lexer = new_lexer("set a = 0;");
+        let mut lexer: Lexer = new_lexer("set a");
         lexer.lexer();
         assert_eq!(
             lexer.tokens,
             vec![
                 Token {
                     part: "set".to_string(),
-                    token: Tokens::Set
+                    token: Tokens::Set,
+                    line_num: 1
                 },
                 Token {
                     part: "a".to_string(),
-                    token: Tokens::Identifier
+                    token: Tokens::Identifier,
+                    line_num: 1
                 },
-                Token {
-                    part: "=".to_string(),
-                    token: Tokens::Assign
-                },
-                Token {
-                    part: "0".to_string(),
-                    token: Tokens::Numeric
-                },
-                Token {
-                    part: ";".to_string(),
-                    token: Tokens::Semi
-                }
             ]
         );
 
-        let mut lexer: Lexer = new_lexer("jump -2;");
+        let mut lexer: Lexer = new_lexer("jump -2");
         lexer.lexer();
         assert_eq!(
             lexer.tokens,
             vec![
                 Token {
                     part: "jump".to_string(),
-                    token: Tokens::Jump
+                    token: Tokens::Jump,
+                    line_num: 1
                 },
                 Token {
                     part: "-".to_string(),
-                    token: Tokens::Minus
+                    token: Tokens::Minus,
+                    line_num: 1
                 },
                 Token {
                     part: "2".to_string(),
-                    token: Tokens::Numeric
-                },
-                Token {
-                    part: ";".to_string(),
-                    token: Tokens::Semi
+                    token: Tokens::Numeric,
+                    line_num: 1
                 },
             ]
         );
@@ -284,36 +271,9 @@ mod tests {
 
     #[test]
     fn tokenize_test() {
-        assert_eq!(
-            tokenize("set"),
-            Token {
-                token: Tokens::Set,
-                part: "set".to_string()
-            }
-        );
-
-        assert_eq!(
-            tokenize("+"),
-            Token {
-                token: Tokens::Plus,
-                part: "+".to_string()
-            }
-        );
-
-        assert_eq!(
-            tokenize("1"),
-            Token {
-                token: Tokens::Numeric,
-                part: "1".to_string()
-            }
-        );
-
-        assert_eq!(
-            tokenize("a"),
-            Token {
-                token: Tokens::Identifier,
-                part: "a".to_string()
-            }
-        );
+        assert_eq!(tokenize("set"), Tokens::Set);
+        assert_eq!(tokenize("+"), Tokens::Plus);
+        assert_eq!(tokenize("1"), Tokens::Numeric);
+        assert_eq!(tokenize("a"), Tokens::Identifier);
     }
 }
