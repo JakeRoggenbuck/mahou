@@ -208,11 +208,11 @@ struct Parser {
 
 impl Parse for Parser {
     fn set(&mut self, line: Vec<&Token>) -> String {
-        let (name, value) = (line[1], line[3]);
+        let (name, value): (&Token, &Token) = (line[1], line[3]);
         format!("{} = {}", name.part, value.part)
     }
     fn print(&mut self, line: Vec<&Token>) -> String {
-        let name = line[1];
+        let name: &Token = line[1];
         format!("print({})", name.part)
     }
     fn exec(&mut self, line: Vec<&Token>) -> String {
