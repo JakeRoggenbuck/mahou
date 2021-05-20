@@ -209,6 +209,21 @@ fn new_lexer(contents: &str) -> Lexer {
     return lexer;
 }
 
+fn spacer(num: usize) -> String {
+    let mut space = String::new();
+    for _ in 0..num {
+        space.push(' ');
+    }
+    return space;
+}
+
+fn print(tok: &Token) {
+    let token_text: String = format!("{:?}", tok.token);
+    let first: String = spacer(14 - token_text.len());
+    let second: String = spacer(10 - tok.part.len());
+    println!("{}{}{}{}{}", token_text, first, tok.part, second, tok.line_num);
+}
+
 fn main() {
     let args: Opt = Opt::from_args();
 
@@ -216,8 +231,9 @@ fn main() {
     let mut lexer: Lexer = new_lexer(&contents);
     lexer.lexer();
 
+    println!("Type{}Part{}Line\n", spacer(14 - "Type".len()), spacer(10 - "Part".len()));
     for tok in lexer.tokens.iter() {
-        println!("{:?}:\t\t{}", tok.token, tok.part);
+        print(tok);
     }
 }
 
