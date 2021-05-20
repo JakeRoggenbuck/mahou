@@ -5,13 +5,11 @@ use structopt::StructOpt;
 /**
     Example:
     - set a = 0;
-    - $a += 1;
-    - print $a;
-    - jump -2;
+    - a += 1;
+    - print a;
 
     Commands:
     - set
-    - jump
     - print
 
     Operators:
@@ -90,7 +88,7 @@ enum Tokens {
 }
 
 /// This is the structure that represents a single token
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct Token {
     part: String,
     token: Tokens,
@@ -181,7 +179,7 @@ impl Lex for Lexer {
                 if ends_token(self.current_char, self.next_char) {
                     let token_type: Tokens = tokenize(&current_part);
                     // Get size of the part for character num
-                    let char_num = self.index as i64 - current_part.len() as i64;
+                    let char_num: i64 = self.index as i64 - current_part.len() as i64;
                     let token: Token = Token {
                         token: token_type,
                         part: current_part,
@@ -194,6 +192,63 @@ impl Lex for Lexer {
             }
             self.next();
         }
+    }
+}
+
+trait Parse {
+    fn set(&mut self, line: Vec<&Token>) -> String;
+    fn print(&mut self, line: Vec<&Token>) -> String;
+    fn exec(&mut self, line: Vec<&Token>) -> String;
+    fn parse(&mut self) -> Vec<String>;
+}
+
+struct Parser {
+    tokens: Vec<Token>,
+}
+
+impl Parse for Parser {
+    fn set(&mut self, line: Vec<&Token>) -> String {
+        let (name, value) = (line[1], line[3]);
+        format!("{} = {}", name.part, value.part)
+    }
+    fn print(&mut self, line: Vec<&Token>) -> String {
+        let name = line[1];
+        format!("print({})", name.part)
+    }
+    fn exec(&mut self, line: Vec<&Token>) -> String {
+        let mut new: String = line
+            .into_iter()
+            .map(|x| x.part.to_owned() + " ")
+            .collect();
+        new.pop();
+        new.pop();
+        return new;
+    }
+    fn parse(&mut self) -> Vec<String> {
+        let mut current_line: Vec<&Token> = Vec::new();
+        let mut output_lines: Vec<String> = Vec::new();
+        let toks: Vec<Token> = self.tokens.clone();
+        for tok in &toks {
+            current_line.push(&tok);
+            // Check if the line has ended, if the current token is a semicolon
+            if tok.token == Tokens::Semi {
+                let first_token: Tokens = current_line[0].token;
+                let line: String;
+                // If the line starts with set
+                if first_token == Tokens::Set {
+                    line = self.set(current_line.clone());
+                // If the line is a print
+                } else if first_token == Tokens::Print {
+                    line = self.print(current_line.clone());
+                // If the line has no command, just interpret it
+                } else {
+                    line = self.exec(current_line.clone());
+                }
+                output_lines.push(line);
+                current_line = Vec::new();
+            }
+        }
+        return output_lines;
     }
 }
 
@@ -257,6 +312,19 @@ fn main() {
     for tok in lexer.tokens.iter() {
         print(tok);
     }
+
+    let mut parser = Parser {
+        tokens: lexer.tokens,
+    };
+
+    println!("{}", spacer(28, '-'));
+    println!("\nOutputted python");
+    println!("{}", spacer(28, '-'));
+    let lines: String = parser
+        .parse()
+        .iter().map(|x| x.to_owned() + "\n")
+        .collect();
+    println!("{}", lines);
 }
 
 #[cfg(test)]
