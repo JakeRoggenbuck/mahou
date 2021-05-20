@@ -95,6 +95,7 @@ struct Token {
     part: String,
     token: Tokens,
     line_num: i64,
+    char_num: i64,
 }
 
 /// Given a string reference that has been identified as a single token, find what token it is
@@ -179,10 +180,13 @@ impl Lex for Lexer {
                 // push the current part as a token, then reset the part
                 if ends_token(self.current_char, self.next_char) {
                     let token_type: Tokens = tokenize(&current_part);
+                    // Get size of the part for character num
+                    let char_num = self.index as i64 - current_part.len() as i64;
                     let token: Token = Token {
                         token: token_type,
                         part: current_part,
                         line_num,
+                        char_num,
                     };
                     self.tokens.push(token);
                     current_part = String::new();
@@ -209,19 +213,22 @@ fn new_lexer(contents: &str) -> Lexer {
     return lexer;
 }
 
-fn spacer(num: usize) -> String {
-    let mut space = String::new();
+fn spacer(num: usize, ch: char) -> String {
+    let mut space: String = String::new();
     for _ in 0..num {
-        space.push(' ');
+        space.push(ch);
     }
     return space;
 }
 
 fn print(tok: &Token) {
     let token_text: String = format!("{:?}", tok.token);
-    let first: String = spacer(14 - token_text.len());
-    let second: String = spacer(10 - tok.part.len());
-    println!("{}{}{}{}{}", token_text, first, tok.part, second, tok.line_num);
+    let first: String = spacer(14 - token_text.len(), ' ');
+    let second: String = spacer(10 - tok.part.len(), ' ');
+    println!(
+        "{}{}{}{}{}:{}",
+        token_text, first, tok.part, second, tok.line_num, tok.char_num
+    );
 }
 
 fn main() {
@@ -231,7 +238,22 @@ fn main() {
     let mut lexer: Lexer = new_lexer(&contents);
     lexer.lexer();
 
-    println!("Type{}Part{}Line\n", spacer(14 - "Type".len()), spacer(10 - "Part".len()));
+    // Print source code header
+    println!("Source code:");
+    println!("{}", spacer(28, '-'));
+    print!("{}", contents);
+    println!("{}\n", spacer(28, '-'));
+
+    // Print the table column names
+    let label: String = format!(
+        "Type{}Part{}Line",
+        spacer(14 - "Type".len(), ' '),
+        spacer(10 - "Part".len(), ' ')
+    );
+    println!("{}", label);
+    println!("{}", spacer(28, '-'));
+
+    // Print all the tokens
     for tok in lexer.tokens.iter() {
         print(tok);
     }
@@ -251,12 +273,14 @@ mod tests {
                 Token {
                     part: "set".to_string(),
                     token: Tokens::Set,
-                    line_num: 1
+                    line_num: 1,
+                    char_num: 1,
                 },
                 Token {
                     part: "a".to_string(),
                     token: Tokens::Identifier,
-                    line_num: 1
+                    line_num: 1,
+                    char_num: 5,
                 },
             ]
         );
@@ -269,17 +293,20 @@ mod tests {
                 Token {
                     part: "jump".to_string(),
                     token: Tokens::Jump,
-                    line_num: 1
+                    line_num: 1,
+                    char_num: 1,
                 },
                 Token {
                     part: "-".to_string(),
                     token: Tokens::Minus,
-                    line_num: 1
+                    line_num: 1,
+                    char_num: 6,
                 },
                 Token {
                     part: "2".to_string(),
                     token: Tokens::Numeric,
-                    line_num: 1
+                    line_num: 1,
+                    char_num: 7,
                 },
             ]
         );
