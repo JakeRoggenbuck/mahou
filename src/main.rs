@@ -218,9 +218,8 @@ impl Parse for Parser {
     fn exec(&mut self, line: Vec<&Token>) -> String {
         let mut new: String = line
             .into_iter()
-            .map(|x| x.part.to_owned() + " ")
+            .map(|x| x.part.to_owned())
             .collect();
-        new.pop();
         new.pop();
         return new;
     }
